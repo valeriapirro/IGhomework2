@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<title> Jumping Pina the Sheep </title>
+
+
+<script id="vertex-shader" type="x-shader/x-vertex">
+#version 300 es
+
+precision mediump float;
+
+in vec4 aPosition;
+
+in vec2 aTexCoord;
+in vec3 aNormal;
+
+out vec2 vTexCoord; //texture coordinate from rasterizer
+
+//uniform vec4 uNormal;
+
+uniform sampler2D aTexture; //texture object from application
+uniform mat4 uModelViewMatrix;
+uniform mat4 projectionMatrix;
+
+uniform vec3 uObjTangent;
+uniform vec4 uNormal;
+uniform mat3 uNormalMatrix;
+uniform vec4 uLightPosition;
+
+
+out vec3 L, LL, E, N, NN;
+
+void main()
+{
+    vec4 NN = vec4(aNormal,0);
+    vec3 pos = -(uModelViewMatrix * aPosition).xyz;
+    vec3 light = uLightPosition.xyz;
+    vec3 L = normalize(light - pos);
+    
+    vec3 E = normalize(-pos);
+    //vec3 N = normalize((uModelViewMatrix*NN).xyz);
+
+    vTexCoord = aTexCoord;
+
+    N = normalize(uNormalMatrix*uNormal.xyz);
+    vec3 T  = normalize(uNormalMatrix*uObjTangent);
+    vec3 B = cross(N, T);
+
+    LL.x = dot(T, L);
+    LL.y = dot(B, L);
+    LL.z = dot(N, L);
+
+    LL = normalize(LL);
+
+    gl_Position = projectionMatrix * uModelViewMatrix * aPosition;
+    
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+#version 300 es
+
+precision mediump float;
+
+uniform vec4 colorSheep;
+uniform bool text;
+uniform bool grasstexflag;
+uniform bool woodtexflag;
+uniform bool facetexflag;
+
+uniform float uShininess;
+uniform mat3 uNormalMatrix;
+uniform vec4 uLightPosition;
+uniform vec4 uAmbientProduct, uDiffuseProduct, uSpecularProduct;
+in vec3 aNormal;
+
+in vec4 aPosition;
+
+uniform mat4 uModelViewMatrix;
+uniform mat4 projectionMatrix;
+
+uniform vec3 uObjTangent;
+uniform vec4 uNormal;
+
+in vec3 L, LL, E, N, NN;
+
+in vec2 vTexCoord; //texture coordinate from rasterizer
+uniform sampler2D uTexMap; //texture object from application
+uniform sampler2D uTexMap0; //texture object from application
+uniform sampler2D uTexMap1; //texture object from application
+uniform sampler2D uTexMap2; //texture object from application
+
+out vec4 fColor;
+
+void main()
+{
+    //vec4 ambient = vec4(0.6, 0.6, 0.6, 0.0);
+
+    vec3 H = normalize(L + E);
+    
+    // Transform vertex normal into eye coordinates
+    
+    
+    //vec3 N = normalize(uNormalMatrix*NN.xyz);
+    
+    // Compute terms in the illumination equation
+    vec4 ambient = uAmbientProduct;
+    
+    float Kd = max(dot(L, N), 0.0);
+    vec4  diffuse = Kd*uDiffuseProduct;
+    
+    float Ks = pow( max(dot(N, H), 0.0), uShininess );
+    vec4  specular = Ks * uSpecularProduct;
+
+    if( dot(L, N) < 0.0 ) {
+        specular = vec4(0.0, 0.0, 0.0, 1);
+      }
+
+if(text){
+    //fColor = (colorSheep+ambient) * texture(uTexMap,vTexCoord);
+
+   vec4 N1 = texture(uTexMap, vTexCoord);
+   vec3 NN1 =  normalize(2.0*N1.xyz-1.0);
+   
+   float Kd1 = max(dot(NN1, LL), 0.0);
+   vec4 ambient1 = vec4(0.8, 0.8, 0.8, 0.0);
+   fColor =  (ambient + diffuse + specular) * (ambient1 + vec4(Kd1*uDiffuseProduct.xyz, 1.0));
+
+} else {
+    if(grasstexflag){
+        fColor = (colorSheep) * texture(uTexMap0,vTexCoord*2.0);
+    }
+    else{
+        if(woodtexflag){
+            fColor = (colorSheep) * texture(uTexMap1,vTexCoord);
+        }else{
+            if(facetexflag){
+                fColor = (colorSheep) * texture(uTexMap2,vTexCoord);
+            }
+            else{
+                fColor = colorSheep;
+            }
+            
+        }
+        
+    }
+    
+}
+    
+
+    
+    
+}
+</script>
+
+<script type="text/javascript" src="../Common/InitShaders.js"></script>
+<script type="text/javascript" src="../Common/MVnew.js"></script>
+<script type="text/javascript" src="Homework2.js"></script>
+
+<div>
+    <button id = "start">Start Animation</button>
+    <button id = "reset">Reset Animation</button>
+    <br>
+    <p></p>
+    <button id = "IncreasePhi">Increase Phi</button>
+    <button id = "DecreasePhi">Decrease Phi</button>
+    <br>
+    <p></p>
+    <button id = "DecreaseTheta">Decrease Theta</button>
+    <button id = "IncreaseTheta">Increase Theta</button>
+    <br>
+    <p></p>
+    <button id = "zoomout">Zoom out</button>
+    <button id = "zoomin">Zoom in</button>
+    <br>
+</div>
+
+<img id = "grasstex" src = "grass.jpg" hidden></img>
+<img id = "woodtex" src = "wood.jpeg" hidden></img>
+<img id = "facetex" src = "face2.gif" hidden></img>
+
+<body>
+<canvas id="gl-canvas" width="512"" height="512">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+</body>
+</html>
